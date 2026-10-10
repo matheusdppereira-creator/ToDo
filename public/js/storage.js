@@ -17,13 +17,13 @@ function getInitialData() {
   return {
     version: SCHEMA_VERSION,
     theme: 'light',
-    projects: [
+    /*projects: [
       { id: 'proj-inbox', name: 'Caixa de Entrada', color: '#6366F1', isDefault: true },
       { id: 'proj-work', name: 'Trabalho', color: '#4F46E5', isDefault: false },
       { id: 'proj-personal', name: 'Pessoal', color: '#10B981', isDefault: false },
       { id: 'proj-studies', name: 'Estudos', color: '#F59E0B', isDefault: false },
       { id: 'proj-home', name: 'Casa', color: '#EC4899', isDefault: false }
-    ],
+    ],*/
     /*tasks: [
       {
         id: 'task-1',
