@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — Gerenciador de Tarefas SaaS</title>
+
+  <!-- Typography: Plus Jakarta Sans via Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Modular CSS Sheets -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+  <div id="app-root">
+    <!-- Sidebar Overlay for mobile drawer -->
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+    <!-- App Sidebar -->
+    <aside id="app-sidebar" class="app-sidebar">
+      <div class="sidebar-header">
+        <div class="brand-wrapper">
+          <div class="brand-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <span>TaskFlow</span>
+        </div>
+        <button id="theme-toggle-btn" class="btn-ghost" title="Alternar tema">
+          <!-- Rendered via JS -->
+        </button>
+      </div>
+
+      <div class="sidebar-content">
+        <!-- Add Task Quick Button in Sidebar -->
+        <button class="btn-sidebar-add" data-action="open-add-task-modal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          <span>Nova Tarefa</span>
+        </button>
+
+        <!-- Search Bar -->
+        <div class="sidebar-search-box">
+          <span class="search-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </span>
+          <input type="text" id="global-search-input" placeholder="Buscar tarefas..." autocomplete="off">
+        </div>
+
+        <!-- Global Navigation -->
+        <div class="nav-section">
+          <div class="nav-section-title">Visualizações</div>
+          <ul class="nav-list">
+            <li>
+              <button class="nav-item-btn active" data-view="inbox">
+                <div class="nav-item-left">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+                  </svg>
+                  <span>Caixa de Entrada</span>
+                </div>
+                <span class="nav-badge" id="badge-inbox"></span>
+              </button>
+            </li>
+            <li>
+              <button class="nav-item-btn" data-view="today">
+                <div class="nav-item-left">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  <span>Hoje</span>
+                </div>
+                <span class="nav-badge" id="badge-today"></span>
+              </button>
+            </li>
+            <li>
+              <button class="nav-item-btn" data-view="upcoming">
+                <div class="nav-item-left">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  <span>Próximos dias</span>
+                </div>
+                <span class="nav-badge" id="badge-upcoming"></span>
+              </button>
+            </li>
+            <li>
+              <button class="nav-item-btn" data-view="all">
+                <div class="nav-item-left">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 12H3"/><path d="M16 6H3"/><path d="M10 18H3"/><path d="m21 18-3-3-3 3"/><path d="m18 15v6"/>
+                  </svg>
+                  <span>Todas as tarefas</span>
+                </div>
+                <span class="nav-badge" id="badge-all"></span>
+              </button>
+            </li>
+            <li>
+              <button class="nav-item-btn" data-view="productivity">
+                <div class="nav-item-left">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                  </svg>
+                  <span>Produtividade</span>
+                </div>
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Dynamic Projects Navigation -->
+        <div class="nav-section">
+          <div class="nav-section-title">
+            <span>Meus Projetos</span>
+            <button class="btn-ghost" data-action="open-add-project-modal" title="Novo Projeto" style="padding: 2px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+          </div>
+          <ul class="nav-list" id="projects-nav-list">
+            <!-- Populated via JS -->
+          </ul>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+      <!-- Top Bar -->
+      <header class="main-topbar">
+        <div class="topbar-left">
+          <button id="mobile-menu-btn" class="btn-ghost mobile-nav-toggle" aria-label="Abrir Menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+          <span style="font-size:0.9rem; font-weight:600; color:var(--color-text-secondary);">TaskFlow SaaS</span>
+        </div>
+
+        <div class="topbar-right">
+          <button class="btn btn-primary" data-action="open-add-task-modal">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            <span class="desktop-text">Criar Tarefa</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Scrollable Central Work View -->
+      <div class="main-content-scroll">
+        <div class="central-container">
+
+          <!-- View Panel: Tasks & Filters -->
+          <div id="tasks-view-panel">
+            <div class="view-header">
+              <div class="view-title-group">
+                <h1 id="view-main-title">Caixa de Entrada</h1>
+                <p id="view-main-subtitle" class="view-subtitle">Organize suas pendências com clareza mental e foco.</p>
+              </div>
+            </div>
+
+            <!-- Quick Add Task Bar -->
+            <form id="quick-add-form" class="quick-add-card" style="margin-bottom: 1.25rem;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              <input type="text" id="quick-add-input" placeholder="Adicionar tarefa rápida... Pressione Enter para salvar" autocomplete="off">
+              <button type="submit" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">Adicionar</button>
+            </form>
+
+            <!-- Filters and Sorting Toolbar -->
+            <div class="filter-bar" style="margin-bottom: 1.25rem;">
+              <div class="filter-group">
+                <label for="filter-priority" style="font-size:0.75rem; font-weight:700; color:var(--color-text-muted);">PRIORIDADE:</label>
+                <select id="filter-priority" class="select-filter">
+                  <option value="all">Todas as prioridades</option>
+                  <option value="1">P1 — Urgente</option>
+                  <option value="2">P2 — Alta</option>
+                  <option value="3">P3 — Média</option>
+                  <option value="4">P4 — Normal</option>
+                </select>
+
+                <label for="filter-status" style="font-size:0.75rem; font-weight:700; color:var(--color-text-muted); margin-left:0.5rem;">STATUS:</label>
+                <select id="filter-status" class="select-filter">
+                  <option value="all">Todas</option>
+                  <option value="pending">Pendentes</option>
+                  <option value="completed">Concluídas</option>
+                </select>
+              </div>
+
+              <div class="filter-group">
+                <label for="sort-by" style="font-size:0.75rem; font-weight:700; color:var(--color-text-muted);">ORDEM:</label>
+                <select id="sort-by" class="select-filter">
+                  <option value="dueDate">Data de Vencimento</option>
+                  <option value="priority">Prioridade (Mais urgentes)</option>
+                  <option value="title">Título Alfabético</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Task Items Container -->
+            <div id="task-list-container" style="display:flex; flex-direction:column; gap:0.6rem;">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- View Panel: Productivity Dashboard -->
+          <div id="productivity-view-panel" style="display: none;">
+            <!-- Rendered via JS -->
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Floating Action Button (FAB) -->
+      <button class="fab" data-action="open-add-task-modal" title="Adicionar Tarefa">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+
+      <!-- Mobile Bottom Navigation -->
+      <nav class="mobile-bottom-nav">
+        <button class="nav-item-btn" data-view="inbox" style="flex-direction:column; align-items:center; gap:0.2rem; font-size:0.72rem; padding:0.4rem;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+          </svg>
+          <span>Entrada</span>
+        </button>
+        <button class="nav-item-btn" data-view="today" style="flex-direction:column; align-items:center; gap:0.2rem; font-size:0.72rem; padding:0.4rem;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          <span>Hoje</span>
+        </button>
+        <button class="nav-item-btn" data-view="all" style="flex-direction:column; align-items:center; gap:0.2rem; font-size:0.72rem; padding:0.4rem;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 12H3"/><path d="M16 6H3"/><path d="M10 18H3"/><path d="m21 18-3-3-3 3"/><path d="m18 15v6"/>
+          </svg>
+          <span>Todas</span>
+        </button>
+        <button class="nav-item-btn" data-view="productivity" style="flex-direction:column; align-items:center; gap:0.2rem; font-size:0.72rem; padding:0.4rem;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          <span>Métricas</span>
+        </button>
+      </nav>
+    </main>
+  </div>
+
+  <!-- Modal: Nova / Editar Tarefa -->
+  <div id="task-modal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="task-modal-title">Nova Tarefa</h3>
+        <button class="btn-ghost" data-action="close-modal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <form id="task-modal-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="modal-task-title">Título da Tarefa *</label>
+            <input type="text" id="modal-task-title" class="form-control" placeholder="Ex: Entregar relatório trimestral" required>
+          </div>
+
+          <div class="form-group">
+            <label for="modal-task-desc">Descrição / Anotações</label>
+            <textarea id="modal-task-desc" class="form-control" rows="3" placeholder="Detalhes opcionais sobre esta atividade..."></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="modal-task-project">Projeto</label>
+              <select id="modal-task-project" class="form-control">
+                <!-- Populated via JS -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="modal-task-priority">Prioridade</label>
+              <select id="modal-task-priority" class="form-control">
+                <option value="1">P1 — Urgente</option>
+                <option value="2">P2 — Alta</option>
+                <option value="3">P3 — Média</option>
+                <option value="4" selected>P4 — Normal</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="modal-task-due">Data de Vencimento</label>
+            <input type="date" id="modal-task-due" class="form-control">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-action="close-modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Tarefa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Criar Projeto -->
+  <div id="project-modal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Novo Projeto</h3>
+        <button class="btn-ghost" data-action="close-modal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <form id="project-modal-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="modal-project-name">Nome do Projeto *</label>
+            <input type="text" id="modal-project-name" class="form-control" placeholder="Ex: Lançamento do Produto" required>
+          </div>
+
+          <div class="form-group">
+            <label>Cor de Identificação</label>
+            <div id="modal-project-colors" class="color-swatches">
+              <!-- Populated via JS -->
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-action="close-modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Criar Projeto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Native Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Vanilla JS Modules Architecture -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

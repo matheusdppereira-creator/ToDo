@@ -1,0 +1,174 @@
+/* ==========================================================================
+   TaskFlow - Design System Tokens & Base Styles
+   ========================================================================== */
+
+:root {
+  /* System / App Info */
+  --app-name: "TaskFlow";
+
+  /* Typography */
+  --font-family-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-heading: -0.02em;
+  --letter-spacing-normal: 0;
+
+  /* Color Palette - Light Mode Canvas & Surfaces */
+  --color-canvas: #F8FAFC;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #F1F5F9;
+  --color-surface-muted: #F8FAFC;
+  --color-border: #E2E8F0;
+  --color-border-subtle: #F1F5F9;
+  
+  /* Text Colors */
+  --color-text-main: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94A3B8;
+  --color-text-inverse: #FFFFFF;
+
+  /* Primary Brand: Electric Indigo */
+  --color-primary: #4F46E5;
+  --color-primary-hover: #4338CA;
+  --color-primary-light: #EEF2FF;
+  --color-primary-focus: rgba(79, 70, 229, 0.25);
+
+  /* Secondary: Pure Emerald (Completions & Success) */
+  --color-success: #10B981;
+  --color-success-hover: #059669;
+  --color-success-light: #ECFDF5;
+  --color-success-text: #047857;
+
+  /* Warning / Amber */
+  --color-warning: #F59E0B;
+  --color-warning-light: #FEF3C7;
+  --color-warning-text: #B45309;
+
+  /* Alert / Destructive / Rose Red */
+  --color-danger: #F43F5E;
+  --color-danger-hover: #E11D48;
+  --color-danger-light: #FFE4E6;
+  --color-danger-text: #BE123C;
+
+  /* Priority Badges / Chips */
+  --p1-bg: #FFE4E6;
+  --p1-text: #E11D48;
+  --p1-border: #FECDD3;
+
+  --p2-bg: #FEF3C7;
+  --p2-text: #D97706;
+  --p2-border: #FDE68A;
+
+  --p3-bg: #F1F5F9;
+  --p3-text: #64748B;
+  --p3-border: #E2E8F0;
+
+  --p4-bg: #F8FAFC;
+  --p4-text: #94A3B8;
+  --p4-border: #E2E8F0;
+
+  /* Shadows (Neo-Tactile SaaS Subtle & Refined) */
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+  --shadow-modal: 0 20px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.06);
+  --shadow-fab: 0 10px 20px -3px rgba(79, 70, 229, 0.35), 0 4px 6px -2px rgba(79, 70, 229, 0.2);
+
+  /* Border Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-card: 14px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+  --radius-checkbox: 50%;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Dark Theme Tokens */
+[data-theme="dark"] {
+  --color-canvas: #0F172A;
+  --color-surface: #1E293B;
+  --color-surface-hover: #334155;
+  --color-surface-muted: #1E293B;
+  --color-border: #334155;
+  --color-border-subtle: #1E293B;
+
+  --color-text-main: #F8FAFC;
+  --color-text-secondary: #CBD5E1;
+  --color-text-muted: #64748B;
+  --color-text-inverse: #0F172A;
+
+  --color-primary: #6366F1;
+  --color-primary-hover: #4F46E5;
+  --color-primary-light: rgba(99, 102, 241, 0.15);
+  --color-primary-focus: rgba(99, 102, 241, 0.35);
+
+  --color-success: #10B981;
+  --color-success-hover: #34D399;
+  --color-success-light: rgba(16, 185, 129, 0.15);
+  --color-success-text: #34D399;
+
+  --p1-bg: rgba(244, 63, 94, 0.18);
+  --p1-text: #FB7185;
+  --p1-border: rgba(244, 63, 94, 0.3);
+
+  --p2-bg: rgba(245, 158, 11, 0.18);
+  --p2-text: #FBBF24;
+  --p2-border: rgba(245, 158, 11, 0.3);
+
+  --p3-bg: rgba(148, 163, 184, 0.15);
+  --p3-text: #94A3B8;
+  --p3-border: rgba(148, 163, 184, 0.25);
+
+  --p4-bg: rgba(51, 65, 85, 0.5);
+  --p4-text: #64748B;
+  --p4-border: rgba(51, 65, 85, 0.6);
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.65);
+  --shadow-fab: 0 10px 20px -3px rgba(99, 102, 241, 0.4);
+}
+
+/* Reset and Base Rules */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-family-sans);
+  background-color: var(--color-canvas);
+  color: var(--color-text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
