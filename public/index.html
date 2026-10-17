@@ -310,7 +310,7 @@
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-action="close-modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Salvar Tarefa</button>
+          <button type="submit" id="task-modal-submit-btn" class="btn btn-primary">Salvar Tarefa</button>
         </div>
       </form>
     </div>
@@ -352,6 +352,16 @@
 
   <!-- Native Toast Notification Container -->
   <div id="toast-container" class="toast-container"></div>
+
+  <!-- Import Map for Firebase Modular SDK in native browser ES modules -->
+  <script type="importmap">
+    {
+      "imports": {
+        "firebase/app": "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"
+      }
+    }
+  </script>
 
   <!-- Vanilla JS Modules Architecture -->
   <script type="module" src="js/app.js"></script>

@@ -95,6 +95,32 @@ export const UI = {
   },
 
   /**
+   * Render loading state in task container
+   */
+  renderLoading(container) {
+    if (!container) return;
+    container.innerHTML = `
+      <div class="loading-container">
+        <div class="spinner"></div>
+        <p>Sincronizando tarefas com o Firestore...</p>
+      </div>
+    `;
+  },
+
+  /**
+   * Render error state in task container
+   */
+  renderError(container, message = 'Ocorreu um erro ao carregar as tarefas.') {
+    if (!container) return;
+    container.innerHTML = `
+      <div class="empty-state" style="border-color: rgba(244, 63, 94, 0.3);">
+        <p class="empty-state-title" style="color: var(--color-danger);">Falha de Conexão</p>
+        <p class="empty-state-subtitle">${this.escapeHTML(message)}</p>
+      </div>
+    `;
+  },
+
+  /**
    * Renders sidebar project items list.
    */
   renderSidebarProjects(projects, activeView, taskCounts) {

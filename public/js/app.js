@@ -1,6 +1,7 @@
 /**
  * TaskFlow - app.js
  * Main entrypoint: orchestrates modules, event listeners, view routing, modals, and reactivity.
+ * Migrated to Cloud Firestore for task management with real-time sync.
  */
 
 import { Storage } from './storage.js';
@@ -20,15 +21,18 @@ class App {
       sortBy: 'dueDate',
       editingTaskId: null,
       projects: [],
-      tasks: []
+      tasks: [],
+      isLoadingTasks: true,
+      tasksLoadError: null
     };
+
+    this.unsubscribeTasks = null;
   }
 
   init() {
-    // 1. Load initial state
+    // 1. Load initial user preferences (theme and projects from Storage)
     const loadedData = Storage.load();
     this.state.projects = loadedData.projects || [];
-    this.state.tasks = loadedData.tasks || [];
     this.state.theme = loadedData.theme || 'light';
 
     // 2. Apply theme
@@ -37,14 +41,37 @@ class App {
     // 3. Bind UI Events
     this.bindGlobalEvents();
 
-    // 4. Initial Render
+    // 4. Initial Render (with loading spinner on tasks)
     this.render();
+
+    // 5. Connect to Firestore real-time listener
+    this.initFirestoreSync();
   }
 
-  save() {
+  initFirestoreSync() {
+    this.state.isLoadingTasks = true;
+    this.state.tasksLoadError = null;
+    this.renderTasks();
+
+    this.unsubscribeTasks = Tasks.subscribe(
+      (tasks) => {
+        this.state.tasks = tasks;
+        this.state.isLoadingTasks = false;
+        this.state.tasksLoadError = null;
+        this.render();
+      },
+      (error) => {
+        this.state.isLoadingTasks = false;
+        this.state.tasksLoadError = error.message || 'Erro ao carregar tarefas do Firestore.';
+        UI.toast('Erro ao conectar com o Firestore: ' + error.message, 'error');
+        this.render();
+      }
+    );
+  }
+
+  savePreferences() {
     Storage.save({
       projects: this.state.projects,
-      tasks: this.state.tasks,
       theme: this.state.theme
     });
   }
@@ -62,7 +89,7 @@ class App {
   toggleTheme() {
     const nextTheme = this.state.theme === 'dark' ? 'light' : 'dark';
     this.applyTheme(nextTheme);
-    this.save();
+    this.savePreferences();
     UI.toast(`Modo ${nextTheme === 'dark' ? 'Escuro' : 'Claro'} ativado`);
   }
 
@@ -98,11 +125,12 @@ class App {
     // Quick Add input form in main area
     const quickAddForm = document.getElementById('quick-add-form');
     if (quickAddForm) {
-      quickAddForm.addEventListener('submit', (e) => {
+      quickAddForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const input = document.getElementById('quick-add-input');
         if (!input || !input.value.trim()) return;
 
+        const originalValue = input.value;
         try {
           let assignedProj = 'proj-inbox';
           if (this.state.currentView.startsWith('proj-')) {
@@ -114,18 +142,18 @@ class App {
             dueDate = new Date().toISOString().split('T')[0];
           }
 
-          this.state.tasks = Tasks.create(this.state.tasks, {
-            title: input.value,
+          input.value = '';
+          await Tasks.create({
+            title: originalValue,
             projectId: assignedProj,
             dueDate: dueDate,
             priority: 4
           });
 
-          input.value = '';
-          this.save();
-          this.render();
-          UI.toast('Tarefa adicionada com sucesso!');
+          UI.toast('Tarefa adicionada no Firestore!');
         } catch (err) {
+          console.error(err);
+          input.value = originalValue;
           UI.toast(err.message, 'error');
         }
       });
@@ -213,7 +241,7 @@ class App {
     this.render();
   }
 
-  handleAction(action, element) {
+  async handleAction(action, element) {
     switch (action) {
       case 'open-add-task-modal':
         this.openTaskModal();
@@ -225,9 +253,16 @@ class App {
 
       case 'toggle-task': {
         const taskId = element.getAttribute('data-task-id');
-        this.state.tasks = Tasks.toggleComplete(this.state.tasks, taskId);
-        this.save();
-        this.render();
+        const task = this.state.tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        try {
+          await Tasks.toggleComplete(taskId, task.completed);
+          // UI updates automatically via onSnapshot
+        } catch (err) {
+          console.error(err);
+          UI.toast('Erro ao atualizar tarefa: ' + err.message, 'error');
+        }
         break;
       }
 
@@ -240,10 +275,13 @@ class App {
       case 'delete-task': {
         const taskId = element.getAttribute('data-task-id');
         if (confirm('Deseja realmente excluir esta tarefa?')) {
-          this.state.tasks = Tasks.remove(this.state.tasks, taskId);
-          this.save();
-          this.render();
-          UI.toast('Tarefa removida com sucesso.');
+          try {
+            await Tasks.remove(taskId);
+            UI.toast('Tarefa removida com sucesso.');
+          } catch (err) {
+            console.error(err);
+            UI.toast('Erro ao excluir tarefa: ' + err.message, 'error');
+          }
         }
         break;
       }
@@ -262,7 +300,7 @@ class App {
     }
   }
 
-  promptDeleteProject(projectId) {
+  async promptDeleteProject(projectId) {
     const project = Projects.getById(this.state.projects, projectId);
     if (!project) return;
 
@@ -272,14 +310,19 @@ class App {
     if (taskCount > 0) {
       message += `\n\nEste projeto possui ${taskCount} tarefas cadastradas.\n\nClique em [OK] para mover as tarefas para a Caixa de Entrada.\nClique em [Cancelar] para cancelar a exclusão.`;
       if (confirm(message)) {
-        this.state.tasks = Tasks.handleProjectDeletion(this.state.tasks, projectId, 'move');
-        this.state.projects = Projects.remove(this.state.projects, projectId);
-        if (this.state.currentView === projectId) {
-          this.state.currentView = 'inbox';
+        try {
+          await Tasks.handleProjectDeletion(this.state.tasks, projectId, 'move');
+          this.state.projects = Projects.remove(this.state.projects, projectId);
+          if (this.state.currentView === projectId) {
+            this.state.currentView = 'inbox';
+          }
+          this.savePreferences();
+          this.render();
+          UI.toast('Projeto excluído e tarefas transferidas para a Caixa de Entrada.');
+        } catch (err) {
+          console.error(err);
+          UI.toast('Erro ao processar tarefas do projeto: ' + err.message, 'error');
         }
-        this.save();
-        this.render();
-        UI.toast('Projeto excluído e tarefas transferidas para a Caixa de Entrada.');
       }
     } else {
       if (confirm(message)) {
@@ -287,7 +330,7 @@ class App {
         if (this.state.currentView === projectId) {
           this.state.currentView = 'inbox';
         }
-        this.save();
+        this.savePreferences();
         this.render();
         UI.toast('Projeto excluído.');
       }
@@ -334,12 +377,13 @@ class App {
     setTimeout(() => inputTitle.focus(), 100);
   }
 
-  handleSaveTaskModal() {
+  async handleSaveTaskModal() {
     const inputTitle = document.getElementById('modal-task-title');
     const inputDesc = document.getElementById('modal-task-desc');
     const selectProject = document.getElementById('modal-task-project');
     const selectPriority = document.getElementById('modal-task-priority');
     const inputDueDate = document.getElementById('modal-task-due');
+    const submitBtn = document.getElementById('task-modal-submit-btn');
 
     const title = inputTitle.value.trim();
     if (!title) {
@@ -347,29 +391,49 @@ class App {
       return;
     }
 
-    if (this.state.editingTaskId) {
-      this.state.tasks = Tasks.update(this.state.tasks, this.state.editingTaskId, {
-        title,
-        description: inputDesc.value,
-        projectId: selectProject.value,
-        priority: selectPriority.value,
-        dueDate: inputDueDate.value
-      });
-      UI.toast('Tarefa atualizada com sucesso.');
-    } else {
-      this.state.tasks = Tasks.create(this.state.tasks, {
-        title,
-        description: inputDesc.value,
-        projectId: selectProject.value,
-        priority: selectPriority.value,
-        dueDate: inputDueDate.value
-      });
-      UI.toast('Nova tarefa criada!');
+    const modal = document.getElementById('task-modal');
+    const originalBtnText = submitBtn ? submitBtn.textContent : 'Salvar Tarefa';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Salvando...';
     }
 
-    document.getElementById('task-modal').classList.remove('active');
-    this.save();
-    this.render();
+    try {
+      if (this.state.editingTaskId) {
+        await Tasks.update(this.state.editingTaskId, {
+          title,
+          description: inputDesc.value,
+          projectId: selectProject.value,
+          priority: selectPriority.value,
+          dueDate: inputDueDate.value
+        });
+        UI.toast('Tarefa atualizada com sucesso no Firestore.');
+      } else {
+        await Tasks.create({
+          title,
+          description: inputDesc.value,
+          projectId: selectProject.value,
+          priority: selectPriority.value,
+          dueDate: inputDueDate.value
+        });
+        UI.toast('Nova tarefa criada no Firestore!');
+      }
+
+      // Limpar campos e fechar apenas após confirmação da persistência
+      inputTitle.value = '';
+      inputDesc.value = '';
+      inputDueDate.value = '';
+      this.state.editingTaskId = null;
+      modal.classList.remove('active');
+    } catch (err) {
+      console.error('Erro ao persistir tarefa no Firestore:', err);
+      UI.toast('Erro ao salvar tarefa: ' + (err.message || err), 'error');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+      }
+    }
   }
 
   openProjectModal() {
@@ -413,7 +477,7 @@ class App {
     try {
       this.state.projects = Projects.create(this.state.projects, name, color);
       document.getElementById('project-modal').classList.remove('active');
-      this.save();
+      this.savePreferences();
       this.render();
       UI.toast(`Projeto "${name}" criado com sucesso!`);
     } catch (err) {
@@ -422,8 +486,6 @@ class App {
   }
 
   getViewDetails() {
-    const todayStr = new Date().toISOString().split('T')[0];
-
     if (this.state.currentView === 'inbox') {
       return { title: 'Caixa de Entrada', subtitle: 'Capture todas as ideias e processe com clareza.' };
     }
@@ -474,6 +536,18 @@ class App {
 
   renderTasks() {
     const taskContainer = document.getElementById('task-list-container');
+    if (!taskContainer) return;
+
+    if (this.state.isLoadingTasks) {
+      UI.renderLoading(taskContainer);
+      return;
+    }
+
+    if (this.state.tasksLoadError) {
+      UI.renderError(taskContainer, this.state.tasksLoadError);
+      return;
+    }
+
     const filteredTasks = Tasks.filterAndSort(this.state.tasks, {
       view: this.state.currentView,
       searchQuery: this.state.searchQuery,

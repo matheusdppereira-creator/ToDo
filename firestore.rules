@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /todos/{todoId} {
+      // Permite leitura e escrita gerais para a coleção de tarefas
+      allow read, write: if true;
+    }
+  }
+}
