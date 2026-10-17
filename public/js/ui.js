@@ -140,6 +140,9 @@ export const UI = {
             <div style="display:flex; align-items:center; gap:0.25rem;">
               ${count > 0 ? `<span class="nav-badge">${count}</span>` : ''}
               ${!proj.isDefault ? `
+                <span class="btn-ghost" data-action="edit-project" data-project-id="${proj.id}" title="Editar Projeto" style="padding: 2px 4px;">
+                  <span style="width:14px; height:14px; display:inline-block;">${Icons.edit}</span>
+                </span>
                 <span class="btn-ghost" data-action="delete-project" data-project-id="${proj.id}" title="Excluir Projeto" style="padding: 2px 4px;">
                   <span style="width:14px; height:14px; display:inline-block;">${Icons.trash}</span>
                 </span>

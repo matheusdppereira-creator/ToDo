@@ -1,7 +1,7 @@
 /**
  * TaskFlow - app.js
  * Main entrypoint: orchestrates modules, event listeners, view routing, modals, and reactivity.
- * Migrated to Cloud Firestore for task management with real-time sync.
+ * Migrated to Cloud Firestore for task and project management with real-time sync.
  */
 
 import { Storage } from './storage.js';
@@ -20,19 +20,22 @@ class App {
       filterStatus: 'all',
       sortBy: 'dueDate',
       editingTaskId: null,
+      editingProjectId: null,
       projects: [],
       tasks: [],
       isLoadingTasks: true,
-      tasksLoadError: null
+      tasksLoadError: null,
+      isLoadingProjects: true,
+      projectsLoadError: null
     };
 
     this.unsubscribeTasks = null;
+    this.unsubscribeProjects = null;
   }
 
   init() {
-    // 1. Load initial user preferences (theme and projects from Storage)
+    // 1. Load initial user preferences (theme from Storage)
     const loadedData = Storage.load();
-    this.state.projects = loadedData.projects || [];
     this.state.theme = loadedData.theme || 'light';
 
     // 2. Apply theme
@@ -41,14 +44,15 @@ class App {
     // 3. Bind UI Events
     this.bindGlobalEvents();
 
-    // 4. Initial Render (with loading spinner on tasks)
+    // 4. Initial Render (with loading spinners)
     this.render();
 
-    // 5. Connect to Firestore real-time listener
+    // 5. Connect to Firestore real-time listeners
     this.initFirestoreSync();
   }
 
   initFirestoreSync() {
+    // 5.1 Sincronização em tempo real de Tarefas
     this.state.isLoadingTasks = true;
     this.state.tasksLoadError = null;
     this.renderTasks();
@@ -63,7 +67,26 @@ class App {
       (error) => {
         this.state.isLoadingTasks = false;
         this.state.tasksLoadError = error.message || 'Erro ao carregar tarefas do Firestore.';
-        UI.toast('Erro ao conectar com o Firestore: ' + error.message, 'error');
+        UI.toast('Erro na sincronização de tarefas: ' + error.message, 'error');
+        this.render();
+      }
+    );
+
+    // 5.2 Sincronização em tempo real de Projetos
+    this.state.isLoadingProjects = true;
+    this.state.projectsLoadError = null;
+
+    this.unsubscribeProjects = Projects.subscribe(
+      (projects) => {
+        this.state.projects = projects;
+        this.state.isLoadingProjects = false;
+        this.state.projectsLoadError = null;
+        this.render();
+      },
+      (error) => {
+        this.state.isLoadingProjects = false;
+        this.state.projectsLoadError = error.message || 'Erro ao carregar projetos do Firestore.';
+        UI.toast('Erro na sincronização de projetos: ' + error.message, 'error');
         this.render();
       }
     );
@@ -71,7 +94,6 @@ class App {
 
   savePreferences() {
     Storage.save({
-      projects: this.state.projects,
       theme: this.state.theme
     });
   }
@@ -96,9 +118,14 @@ class App {
   bindGlobalEvents() {
     // Navigation items (Sidebar + Mobile Bottom Nav)
     document.addEventListener('click', (e) => {
+      // Ignorar se clicou em ações dentro do item de projeto (editar / excluir)
+      if (e.target.closest('[data-action="delete-project"]') || e.target.closest('[data-action="edit-project"]')) {
+        return;
+      }
+
       // Nav View click
       const navBtn = e.target.closest('[data-view]');
-      if (navBtn && !e.target.closest('[data-action="delete-project"]')) {
+      if (navBtn) {
         const view = navBtn.getAttribute('data-view');
         this.setView(view);
         this.closeMobileDrawer();
@@ -133,7 +160,7 @@ class App {
         const originalValue = input.value;
         try {
           let assignedProj = 'proj-inbox';
-          if (this.state.currentView.startsWith('proj-')) {
+          if (this.state.currentView.startsWith('proj-') || this.state.projects.some(p => p.id === this.state.currentView)) {
             assignedProj = this.state.currentView;
           }
 
@@ -150,7 +177,7 @@ class App {
             priority: 4
           });
 
-          UI.toast('Tarefa adicionada no Firestore!');
+          UI.toast('Tarefa adicionada com sucesso!');
         } catch (err) {
           console.error(err);
           input.value = originalValue;
@@ -251,6 +278,12 @@ class App {
         this.openProjectModal();
         break;
 
+      case 'edit-project': {
+        const projectId = element.getAttribute('data-project-id');
+        this.openProjectModal(projectId);
+        break;
+      }
+
       case 'toggle-task': {
         const taskId = element.getAttribute('data-task-id');
         const task = this.state.tasks.find(t => t.id === taskId);
@@ -258,7 +291,6 @@ class App {
 
         try {
           await Tasks.toggleComplete(taskId, task.completed);
-          // UI updates automatically via onSnapshot
         } catch (err) {
           console.error(err);
           UI.toast('Erro ao atualizar tarefa: ' + err.message, 'error');
@@ -305,34 +337,37 @@ class App {
     if (!project) return;
 
     const taskCount = this.state.tasks.filter(t => t.projectId === projectId).length;
-    let message = `Excluir o projeto "${project.name}"?`;
+    let message = `Excluir o projeto "${project.title || project.name}"?`;
 
     if (taskCount > 0) {
       message += `\n\nEste projeto possui ${taskCount} tarefas cadastradas.\n\nClique em [OK] para mover as tarefas para a Caixa de Entrada.\nClique em [Cancelar] para cancelar a exclusão.`;
       if (confirm(message)) {
         try {
           await Tasks.handleProjectDeletion(this.state.tasks, projectId, 'move');
-          this.state.projects = Projects.remove(this.state.projects, projectId);
+          await Projects.remove(projectId);
           if (this.state.currentView === projectId) {
             this.state.currentView = 'inbox';
           }
-          this.savePreferences();
           this.render();
           UI.toast('Projeto excluído e tarefas transferidas para a Caixa de Entrada.');
         } catch (err) {
           console.error(err);
-          UI.toast('Erro ao processar tarefas do projeto: ' + err.message, 'error');
+          UI.toast('Erro ao excluir projeto: ' + err.message, 'error');
         }
       }
     } else {
       if (confirm(message)) {
-        this.state.projects = Projects.remove(this.state.projects, projectId);
-        if (this.state.currentView === projectId) {
-          this.state.currentView = 'inbox';
+        try {
+          await Projects.remove(projectId);
+          if (this.state.currentView === projectId) {
+            this.state.currentView = 'inbox';
+          }
+          this.render();
+          UI.toast('Projeto excluído com sucesso.');
+        } catch (err) {
+          console.error(err);
+          UI.toast('Erro ao excluir projeto: ' + err.message, 'error');
         }
-        this.savePreferences();
-        this.render();
-        UI.toast('Projeto excluído.');
       }
     }
   }
@@ -350,7 +385,7 @@ class App {
     // Populate projects dropdown
     if (selectProject) {
       selectProject.innerHTML = this.state.projects.map(p => `
-        <option value="${p.id}">${UI.escapeHTML(p.name)}</option>
+        <option value="${p.id}">${UI.escapeHTML(p.title || p.name)}</option>
       `).join('');
     }
 
@@ -368,7 +403,8 @@ class App {
       modalTitle.textContent = 'Nova Tarefa';
       inputTitle.value = '';
       inputDesc.value = '';
-      selectProject.value = this.state.currentView.startsWith('proj-') ? this.state.currentView : 'proj-inbox';
+      const isProjectView = this.state.projects.some(p => p.id === this.state.currentView);
+      selectProject.value = isProjectView ? this.state.currentView : 'proj-inbox';
       selectPriority.value = '4';
       inputDueDate.value = this.state.currentView === 'today' ? new Date().toISOString().split('T')[0] : '';
     }
@@ -436,16 +472,40 @@ class App {
     }
   }
 
-  openProjectModal() {
+  openProjectModal(projectId = null) {
+    this.state.editingProjectId = projectId;
     const modal = document.getElementById('project-modal');
+    const modalTitle = document.getElementById('project-modal-title');
     const inputName = document.getElementById('modal-project-name');
+    const inputDesc = document.getElementById('modal-project-desc');
+    const selectStatus = document.getElementById('modal-project-status');
     const paletteContainer = document.getElementById('modal-project-colors');
+    const submitBtn = document.getElementById('project-modal-submit-btn');
 
-    inputName.value = '';
+    let currentColor = Projects.PALETTE[0];
+
+    if (projectId) {
+      const proj = Projects.getById(this.state.projects, projectId);
+      if (proj) {
+        if (modalTitle) modalTitle.textContent = 'Editar Projeto';
+        if (submitBtn) submitBtn.textContent = 'Salvar Alterações';
+        inputName.value = proj.title || proj.name || '';
+        if (inputDesc) inputDesc.value = proj.description || '';
+        if (selectStatus) selectStatus.value = proj.status || 'Em andamento';
+        currentColor = proj.color || Projects.PALETTE[0];
+      }
+    } else {
+      if (modalTitle) modalTitle.textContent = 'Novo Projeto';
+      if (submitBtn) submitBtn.textContent = 'Criar Projeto';
+      inputName.value = '';
+      if (inputDesc) inputDesc.value = '';
+      if (selectStatus) selectStatus.value = 'Em andamento';
+      currentColor = Projects.PALETTE[0];
+    }
 
     // Render color swatches
-    paletteContainer.innerHTML = Projects.PALETTE.map((color, index) => `
-      <div class="color-swatch-radio ${index === 0 ? 'selected' : ''}" 
+    paletteContainer.innerHTML = Projects.PALETTE.map((color) => `
+      <div class="color-swatch-radio ${color === currentColor ? 'selected' : ''}" 
            style="background-color: ${color};" 
            data-color="${color}">
       </div>
@@ -463,25 +523,61 @@ class App {
     setTimeout(() => inputName.focus(), 100);
   }
 
-  handleSaveProjectModal() {
+  async handleSaveProjectModal() {
     const inputName = document.getElementById('modal-project-name');
-    const name = inputName.value.trim();
-    if (!name) {
-      alert('Por favor, informe o nome do projeto.');
+    const inputDesc = document.getElementById('modal-project-desc');
+    const selectStatus = document.getElementById('modal-project-status');
+    const submitBtn = document.getElementById('project-modal-submit-btn');
+
+    const title = inputName.value.trim();
+    if (!title) {
+      alert('Por favor, informe o título do projeto.');
       return;
     }
 
+    const description = inputDesc ? inputDesc.value.trim() : '';
+    const status = selectStatus ? selectStatus.value : 'Em andamento';
     const selectedColorEl = document.querySelector('.color-swatch-radio.selected');
     const color = selectedColorEl ? selectedColorEl.getAttribute('data-color') : Projects.PALETTE[0];
 
+    const modal = document.getElementById('project-modal');
+    const originalBtnText = submitBtn ? submitBtn.textContent : 'Salvar Projeto';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Salvando...';
+    }
+
     try {
-      this.state.projects = Projects.create(this.state.projects, name, color);
-      document.getElementById('project-modal').classList.remove('active');
-      this.savePreferences();
-      this.render();
-      UI.toast(`Projeto "${name}" criado com sucesso!`);
+      if (this.state.editingProjectId) {
+        await Projects.update(this.state.editingProjectId, {
+          title,
+          description,
+          status,
+          color
+        });
+        UI.toast(`Projeto "${title}" atualizado com sucesso no Firestore!`);
+      } else {
+        await Projects.create({
+          title,
+          description,
+          status,
+          color
+        });
+        UI.toast(`Projeto "${title}" criado com sucesso no Firestore!`);
+      }
+
+      this.state.editingProjectId = null;
+      inputName.value = '';
+      if (inputDesc) inputDesc.value = '';
+      modal.classList.remove('active');
     } catch (err) {
-      alert(err.message);
+      console.error('Erro ao salvar projeto no Firestore:', err);
+      UI.toast('Erro ao salvar projeto: ' + (err.message || err), 'error');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+      }
     }
   }
 
@@ -501,12 +597,18 @@ class App {
     if (this.state.currentView === 'productivity') {
       return { title: 'Painel de Produtividade', subtitle: 'Métricas, ritmo e análise de desempenho.' };
     }
-    if (this.state.currentView.startsWith('proj-')) {
-      const proj = Projects.getById(this.state.projects, this.state.currentView);
-      if (proj) {
-        return { title: proj.name, subtitle: `Demandas organizadas no projeto ${proj.name}.` };
-      }
+    
+    // Visão de um Projeto específico
+    const proj = Projects.getById(this.state.projects, this.state.currentView);
+    if (proj) {
+      const descText = proj.description ? ` • ${proj.description}` : '';
+      const statusText = proj.status ? `[${proj.status}]` : '';
+      return {
+        title: proj.title || proj.name,
+        subtitle: `${statusText} Demandas organizadas no projeto ${proj.title || proj.name}${descText}.`
+      };
     }
+
     return { title: 'Tarefas', subtitle: 'Gerenciamento organizado de atividades.' };
   }
 

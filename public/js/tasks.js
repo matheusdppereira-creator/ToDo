@@ -17,7 +17,7 @@ import {
   Timestamp
 } from "firebase/firestore";
 
-const TODOS_COLLECTION = 'todos';
+const TAREFAS_COLLECTION = 'tarefas';
 
 export const Tasks = {
   /**
@@ -66,7 +66,7 @@ export const Tasks = {
    * Retorna a função unsubscribe.
    */
   subscribe(onSuccess, onError) {
-    const todosRef = collection(db, TODOS_COLLECTION);
+    const todosRef = collection(db, TAREFAS_COLLECTION);
     return onSnapshot(
       todosRef,
       (snapshot) => {
@@ -88,7 +88,7 @@ export const Tasks = {
       throw new Error('O título da tarefa é obrigatório.');
     }
 
-    const colRef = collection(db, TODOS_COLLECTION);
+    const colRef = collection(db, TAREFAS_COLLECTION);
     const newTaskData = {
       title: title.trim(),
       description: description ? description.trim() : '',
@@ -108,7 +108,7 @@ export const Tasks = {
    */
   async update(id, updates) {
     if (!id) throw new Error('ID da tarefa não fornecido.');
-    const taskDocRef = doc(db, TODOS_COLLECTION, id);
+    const taskDocRef = doc(db, TAREFAS_COLLECTION, id);
 
     const docUpdates = {};
     if (updates.title !== undefined) docUpdates.title = updates.title.trim();
@@ -128,7 +128,7 @@ export const Tasks = {
   async toggleComplete(id, currentCompleted) {
     if (!id) throw new Error('ID da tarefa não fornecido.');
     const nextCompleted = !currentCompleted;
-    const taskDocRef = doc(db, TODOS_COLLECTION, id);
+    const taskDocRef = doc(db, TAREFAS_COLLECTION, id);
 
     return await updateDoc(taskDocRef, {
       completed: nextCompleted,
@@ -141,7 +141,7 @@ export const Tasks = {
    */
   async remove(id) {
     if (!id) throw new Error('ID da tarefa não fornecido.');
-    const taskDocRef = doc(db, TODOS_COLLECTION, id);
+    const taskDocRef = doc(db, TAREFAS_COLLECTION, id);
     return await deleteDoc(taskDocRef);
   },
 

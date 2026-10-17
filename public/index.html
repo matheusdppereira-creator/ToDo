@@ -316,11 +316,11 @@
     </div>
   </div>
 
-  <!-- Modal: Criar Projeto -->
+  <!-- Modal: Criar / Editar Projeto -->
   <div id="project-modal" class="modal-overlay">
     <div class="modal-box">
       <div class="modal-header">
-        <h3>Novo Projeto</h3>
+        <h3 id="project-modal-title">Novo Projeto</h3>
         <button class="btn-ghost" data-action="close-modal">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -330,8 +330,22 @@
       <form id="project-modal-form">
         <div class="modal-body">
           <div class="form-group">
-            <label for="modal-project-name">Nome do Projeto *</label>
+            <label for="modal-project-name">Título / Nome do Projeto *</label>
             <input type="text" id="modal-project-name" class="form-control" placeholder="Ex: Lançamento do Produto" required>
+          </div>
+
+          <div class="form-group">
+            <label for="modal-project-desc">Descrição</label>
+            <textarea id="modal-project-desc" class="form-control" placeholder="Objetivos e escopo do projeto..." rows="2"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="modal-project-status">Status</label>
+            <select id="modal-project-status" class="form-control">
+              <option value="Em andamento" selected>Em andamento</option>
+              <option value="Pendente">Pendente</option>
+              <option value="Concluído">Concluído</option>
+            </select>
           </div>
 
           <div class="form-group">
@@ -344,7 +358,7 @@
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-action="close-modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Criar Projeto</button>
+          <button type="submit" id="project-modal-submit-btn" class="btn btn-primary">Salvar Projeto</button>
         </div>
       </form>
     </div>
