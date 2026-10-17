@@ -1,9 +1,10 @@
 /**
  * TaskFlow - projects.js
  * Firestore CRUD, real-time sync, and project entity management.
+ * Suporta isolamento por usuário (userId) e visão administrativa.
  */
 
-import { db } from './firebase.js';
+import { db, auth } from './firebase.js';
 import {
   collection,
   doc,
@@ -11,8 +12,9 @@ import {
   updateDoc,
   deleteDoc,
   onSnapshot,
-  serverTimestamp,
-  Timestamp
+  query,
+  where,
+  serverTimestamp
 } from "firebase/firestore";
 
 const PROJECTS_COLLECTION = 'projects';
@@ -40,26 +42,43 @@ export const Projects = {
     return {
       id: docSnap.id,
       title: data.title || data.name || 'Sem título',
-      name: data.title || data.name || 'Sem título', // retrocompatibilidade para componentes que utilizam .name
+      name: data.title || data.name || 'Sem título',
       description: data.description || '',
       status: data.status || 'Em andamento',
       color: data.color || '#4F46E5',
-      isDefault: Boolean(data.isDefault)
+      isDefault: Boolean(data.isDefault),
+      userId: data.userId || '',
+      userEmail: data.userEmail || ''
     };
   },
 
   /**
    * Escuta em tempo real a coleção 'projects' do Firestore.
-   * Retorna a função unsubscribe.
+   * Bloqueia a execução se auth.currentUser não estiver autenticado.
    */
-  subscribe(onSuccess, onError) {
+  subscribe(onSuccess, onError, targetUserId = null) {
+    if (!auth.currentUser || !auth.currentUser.uid) {
+      console.warn('Projects.subscribe bloqueado: usuário ainda não autenticado.');
+      return () => {};
+    }
+
     const colRef = collection(db, PROJECTS_COLLECTION);
+    let q;
+
+    if (targetUserId === 'all') {
+      q = query(colRef);
+    } else {
+      const effectiveUid = targetUserId || auth.currentUser.uid;
+      q = query(colRef, where("userId", "==", effectiveUid));
+    }
+
     return onSnapshot(
-      colRef,
+      q,
       (snapshot) => {
+        if (!auth.currentUser) return;
         let projects = snapshot.docs.map(docSnap => Projects.mapDocToProject(docSnap));
 
-        // Se a coleção estiver vazia, ou se não houver a Caixa de Entrada padrão, mantém/injeta a padrão
+        // Se a coleção do usuário não tiver a Caixa de Entrada padrão, inclui virtualmente
         const hasInbox = projects.some(p => p.id === 'proj-inbox' || p.isDefault);
         if (!hasInbox) {
           const defaultInbox = {
@@ -69,7 +88,8 @@ export const Projects = {
             description: 'Demandas gerais e pendências rápidas',
             status: 'Em andamento',
             color: '#6366F1',
-            isDefault: true
+            isDefault: true,
+            userId: auth.currentUser?.uid || ''
           };
           projects = [defaultInbox, ...projects];
         }
@@ -77,6 +97,7 @@ export const Projects = {
         onSuccess(projects);
       },
       (error) => {
+        if (!auth.currentUser) return; // Ignora erros de permissão disparados durante logout
         console.error('Erro na sincronização em tempo real de Projetos:', error);
         if (onError) onError(error);
       }
@@ -91,11 +112,18 @@ export const Projects = {
   },
 
   /**
-   * Cria um novo projeto no Firestore.
+   * Cria um novo projeto no Firestore associado ao usuário.
    */
-  async create({ title, description = '', status = 'Em andamento', color }) {
+  async create({ title, description = '', status = 'Em andamento', color, forUserId = null, forUserEmail = null }) {
     if (!title || !title.trim()) {
       throw new Error('O título do projeto é obrigatório.');
+    }
+
+    const currentUid = forUserId || auth.currentUser?.uid;
+    const currentEmail = forUserEmail || auth.currentUser?.email || '';
+
+    if (!currentUid) {
+      throw new Error('Usuário não autenticado.');
     }
 
     const colRef = collection(db, PROJECTS_COLLECTION);
@@ -106,6 +134,8 @@ export const Projects = {
       status: status || 'Em andamento',
       color: color || Projects.PALETTE[0],
       isDefault: false,
+      userId: currentUid,
+      userEmail: currentEmail,
       createdAt: serverTimestamp()
     };
 

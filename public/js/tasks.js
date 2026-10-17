@@ -1,9 +1,10 @@
 /**
  * TaskFlow - tasks.js
  * Firestore CRUD, real-time sync, filtering, querying, and sorting logic for tasks.
+ * Suporta isolamento por usuário (userId) e visão administrativa.
  */
 
-import { db } from './firebase.js';
+import { db, auth } from './firebase.js';
 import {
   collection,
   doc,
@@ -12,7 +13,7 @@ import {
   deleteDoc,
   onSnapshot,
   query,
-  orderBy,
+  where,
   serverTimestamp,
   Timestamp
 } from "firebase/firestore";
@@ -57,35 +58,60 @@ export const Tasks = {
       dueDate: data.dueDate || '',
       completed: Boolean(data.completed),
       createdAt: createdAtISO,
-      completedAt: completedAtISO
+      completedAt: completedAtISO,
+      userId: data.userId || '',
+      userEmail: data.userEmail || ''
     };
   },
 
   /**
-   * Inscreve um listener em tempo real para a coleção 'todos'.
-   * Retorna a função unsubscribe.
+   * Inscreve um listener em tempo real para a coleção 'tarefas'.
+   * Bloqueia a execução se auth.currentUser não estiver autenticado.
    */
-  subscribe(onSuccess, onError) {
-    const todosRef = collection(db, TAREFAS_COLLECTION);
+  subscribe(onSuccess, onError, targetUserId = null) {
+    if (!auth.currentUser || !auth.currentUser.uid) {
+      console.warn('Tasks.subscribe bloqueado: usuário ainda não autenticado.');
+      return () => {};
+    }
+
+    const colRef = collection(db, TAREFAS_COLLECTION);
+    let q;
+
+    if (targetUserId === 'all') {
+      q = query(colRef);
+    } else {
+      const effectiveUid = targetUserId || auth.currentUser.uid;
+      q = query(colRef, where("userId", "==", effectiveUid));
+    }
+
     return onSnapshot(
-      todosRef,
+      q,
       (snapshot) => {
+        if (!auth.currentUser) return;
         const tasks = snapshot.docs.map(docSnap => Tasks.mapDocToTask(docSnap));
         onSuccess(tasks);
       },
       (error) => {
-        console.error('Erro na sincronização em tempo real do Firestore:', error);
+        if (!auth.currentUser) return; // Ignora erros de permissão disparados durante logout
+        console.error('Erro na sincronização em tempo real de Tarefas:', error);
         if (onError) onError(error);
       }
     );
   },
 
   /**
-   * Cria uma nova tarefa na coleção 'todos' do Firestore.
+   * Cria uma nova tarefa na coleção 'tarefas' do Firestore.
    */
-  async create({ title, description = '', projectId = 'proj-inbox', priority = 4, dueDate = '' }) {
+  async create({ title, description = '', projectId = 'proj-inbox', priority = 4, dueDate = '', forUserId = null, forUserEmail = null }) {
     if (!title || !title.trim()) {
       throw new Error('O título da tarefa é obrigatório.');
+    }
+
+    const currentUid = forUserId || auth.currentUser?.uid;
+    const currentEmail = forUserEmail || auth.currentUser?.email || '';
+
+    if (!currentUid) {
+      throw new Error('Usuário não autenticado.');
     }
 
     const colRef = collection(db, TAREFAS_COLLECTION);
@@ -97,7 +123,9 @@ export const Tasks = {
       dueDate: dueDate || '',
       completed: false,
       createdAt: serverTimestamp(),
-      completedAt: null
+      completedAt: null,
+      userId: currentUid,
+      userEmail: currentEmail
     };
 
     return await addDoc(colRef, newTaskData);

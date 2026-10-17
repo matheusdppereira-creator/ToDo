@@ -1,11 +1,25 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /tarefas/{tarefaId} {
-      allow read, write: if true;
+    
+    function isAuthenticated() {
+      return request.auth != null;
     }
+
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.email == "admin@admin.com";
+    }
+
+    match /users/{userId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /tarefas/{tarefaId} {
+      allow read, write: if isAuthenticated();
+    }
+
     match /projects/{projectId} {
-      allow read, write: if true;
+      allow read, write: if isAuthenticated();
     }
   }
 }
